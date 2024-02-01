@@ -43,12 +43,12 @@ def welcome():
     return (
         f"Welcome to the surfsup challenge!<br/><br/>"
         f"These are the available api routes:<br/><br/>"
-        f"/api/v1.0/precipitation - Returns JSON list of precipitation for the last year<br/>"
-        f"/api/v1.0/stations - Returns JSON list of the available weather stations<br/>"
-        f"/api/v1.0/tobs - Returns JSON list of temperature observations for the most active station<br/>"
-        f"/api/v1.0/<start> - Returns JSON list of temperature statistics from the specifed start date onwards<br/>"
-        f"Please provide the start date (in the format YYYY-MM-DD) in the URL when using the api above.<br/>"
-        f"/api/v1.0/<start>/<end> - <br/>"
+        f"<b>/api/v1.0/precipitation</b> - Returns JSON list of precipitation for the last year<br/><br/>"
+        f"<b>/api/v1.0/stations</b> - Returns JSON list of the available weather stations<br/><br/>"
+        f"<b>/api/v1.0/tobs</b> - Returns JSON list of temperature observations for the most active station<br/><br/>"
+        f"<b>/api/v1.0/<start></b> - Returns JSON list of temperature statistics from the specifed start date onwards<br/>"
+        f"Please provide the start date (in the format YYYY-MM-DD) in the URL when using the api above.<br/><br/>"
+        f"<b>/api/v1.0/<start>/<end></b> -  Returns JSON list of temperature statistics for specified start and end dates inclusive. <br/>"
         f"Please provide the start and end date (in the format YYYY-MM-DD/YYYY-MM-DD) in the URL when using the api above."
     )
 
@@ -64,7 +64,8 @@ def precip():
     # Get precipation data from query date
     results = session.query(Measurement.date, Measurement.prcp).\
         filter(Measurement.date >= query_date).all()
-
+ 
+   #close session 
     session.close()
 
     # Convert results to a dictionary
@@ -84,6 +85,7 @@ def station():
     # Query for station listing
     unique_stations = session.query(Station.station).distinct().all()
 
+   #close session 
     session.close()
 
     # Extract station names from the query results
@@ -113,7 +115,7 @@ def temperature_observations():
         .filter(Measurement.station == most_active_station) \
             .filter(Measurement.date >= query_date) \
                  .all()
-    
+    #close session    
     session.close()
 
    # Create a list of dictionaries containing dates and temperature observations
@@ -125,21 +127,63 @@ def temperature_observations():
     return jsonify(temperature_data)
 
 # for a specified start date calculate TMIN, TAVG, TMAX for all dates >= start date
-# @app.route("/api/v1.0/<start_date>")
-# def temp_stats_start(start_date):
-#     # Create our session (link) from Python to the DB
-#     session = Session(engine)
+@app.route("/api/v1.0/<start_date>")
+def temp_stats_start(start_date):
+    # Create our session (link) from Python to the DB
+    session = Session(engine)
 
-#      # Query the minimum, average, and maximum temperatures for the specified start date and onwards
-#     temp_stats = session.query(func.min(Measurement.tobs).label("min_temp"),
-#                                func.avg(Measurement.tobs).label("avg_temp"),
-#                                func.max(Measurement.tobs).label("max_temp")) \
-#                         .filter(Measurement.date >= start_date) \
-#                         .all()
+     # Query the minimum, average, and maximum temperatures for the specified start date and onwards
+    temp_stats = session.query(func.min(Measurement.tobs).label("min_temp"),
+                               func.avg(Measurement.tobs).label("avg_temp"),
+                               func.max(Measurement.tobs).label("max_temp")) \
+                        .filter(Measurement.date >= start_date) \
+                        .all()
 
-#     session.close()
+   #close session 
+    session.close()
 
+    # Extracting values from the query result
+    min_temp, avg_temp, max_temp = temp_stats[0]
 
+    # Create a dictionary with the temperature statistics, renaming keys
+    temp_stats_dict = {
+        "TMIN": min_temp,
+        "TAVG": avg_temp,
+        "TMAX": max_temp
+    }
+
+    # Return the JSON response
+    return jsonify(temp_stats_dict)
+
+# for a specified start date and end datecalculate TMIN, TAVG, TMAX for all dates >= start date
+@app.route("/api/v1.0/<start_date>/<end_date>")
+def temp_stats_start_end(start_date, end_date):
+    # Create our session (link) from Python to the DB
+    session = Session(engine)
+
+     # Query the minimum, average, and maximum temperatures for the specified start date and onwards
+    temp_stats = session.query(func.min(Measurement.tobs).label("min_temp"),
+                               func.avg(Measurement.tobs).label("avg_temp"),
+                               func.max(Measurement.tobs).label("max_temp")) \
+                        .filter(Measurement.date >= start_date) \
+                        .filter(Measurement.date <= end_date) \
+                        .all()
+
+    #close session 
+    session.close()
+
+    # Extracting values from the query result
+    min_temp, avg_temp, max_temp = temp_stats[0]
+
+    # Create a dictionary with the temperature statistics, renaming keys
+    temp_stats_dict = {
+        "TMIN": min_temp,
+        "TAVG": avg_temp,
+        "TMAX": max_temp
+    }
+
+    # Return the JSON response
+    return jsonify(temp_stats_dict)
 
 #app run statement 
 if __name__ == "__main__":
